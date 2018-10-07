@@ -12,6 +12,7 @@ import com.intellij.openapi.ide.CopyPasteManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import letsplayjson.json.JsonParser;
+import letsplayjson.json.JsonTester;
 import letsplayjson.json.NotJsonException;
 
 public class ShouldTranscodeJson extends AnAction {
@@ -23,8 +24,9 @@ public class ShouldTranscodeJson extends AnAction {
     final Transferable transferable =  manager.getContents();
     if(transferable != null && transferable.isDataFlavorSupported(DataFlavor.stringFlavor)) {
       try {
+        Messages.showWarningDialog(transferable.getTransferData(DataFlavor.stringFlavor) + "", "This Was Your Response");// TODO remove
         final String transfered = (String)transferable.getTransferData(DataFlavor.stringFlavor);
-        if(JsonParser.isJson(transfered)) {
+        if(JsonTester.isJson(transfered)) {
           final boolean wasTranscodingAccepted = askForJsonTranscoding(event);
           if(wasTranscodingAccepted) {
             try {

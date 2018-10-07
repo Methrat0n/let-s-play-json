@@ -1,3 +1,7 @@
 package letsplayjson.json;
 
-public class NotJsonException extends Exception {}
+public class NotJsonException extends RuntimeException {
+  public NotJsonException(String msg) {
+    super(msg);
+  }
+}

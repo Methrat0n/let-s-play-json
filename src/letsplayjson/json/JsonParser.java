@@ -1,61 +1,74 @@
 package letsplayjson.json;
 
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class JsonParser {
-  public static boolean isJson(String maybeJson) {
-    return isJsonObject(maybeJson) || isJsonArray(maybeJson);
+  public static String transcodeJson(String json) {
+    final int length = json.length();
+
+    if(length < 2)
+      return json;
+
+    final char firstCharacter = json.charAt(0);
+    final char lastCharacter = json.charAt(length - 1);
+
+    final boolean isObject = firstCharacter == '{' && lastCharacter == '}';
+    final boolean isArray = firstCharacter == '[' && lastCharacter == ']';
+
+    final String insideJson = json.substring(1,length - 2);
+
+    if(isArray) {
+      final String array = transcodeArray(insideJson);
+      return "Json.arr(" + array + ")";
+    }
+    else if(isObject) {
+      final String object = transcodeObject(insideJson);
+      return "Json.obj(" + object + ")";
+    }
+    else throw new NotJsonException("Json should be object or json");
   }
 
-  /**
-   * Test if a given string is a valid json object
-   * for one level. It does this by validating the bracket around the string
-   * and checking if the string compose of "key": "value" whatever the value may be
-   */
-  private static boolean isJsonObject(String maybeJsonObject) {
-    final int length = maybeJsonObject.length();
+  private static String transcodeArray(String insideJson) {
+    return Stream.of(insideJson.split(",")).map(line -> {
+      final int length = line.length();
 
-    if(length < 2) //minimum json is "{}"
-      return false;
+      if(length < 2)
+        throw new NotJsonException("Error paring near " + line);
 
-    final char firstCharacter = maybeJsonObject.charAt(0);
-    final char lastCharacter = maybeJsonObject.charAt(length - 1);
+      final char firstCharacter = line.charAt(0);
+      final char lastCharacter = line.charAt(length - 1);
+      final boolean isObject = firstCharacter == '{' && lastCharacter == '}';
+      final boolean isArray = firstCharacter == '[' && lastCharacter == ']';
 
-    final boolean asBrackets = firstCharacter == '{' && lastCharacter == '}';
-    if(length == 2 && asBrackets)
-      return true;
+      final String inside = line.substring(1,length - 2);
 
-    final String inBrackets = maybeJsonObject.substring(1,length - 2);
-    return Stream.of(inBrackets.split(","))
-        .allMatch(inBracket -> inBracket.split(":").length == 2);
+      if(isArray) {
+        final String array = transcodeArray(inside);
+        return "Json.arr(" + array + ")";
+      } else if (isObject) {
+        return asJsObject(line);
+      } else
+        throw new NotJsonException("Inside Json array there should be object or array");
+    }).collect(Collectors.joining(","));
   }
 
-  /**
-   * Test if a given string is a valid json array
-   * for one level. It does this by validating the [] around it and
-   * checking if the subelement are made of [] or {} separated by commas
-   */
-  private static boolean isJsonArray(String maybeJsonArray) {
-    final int length = maybeJsonArray.length();
-
-    if(length < 2) //minimum json is "[]"
-      return false;
-
-    final char firstCharacter = maybeJsonArray.charAt(0);
-    final char lastCharacter = maybeJsonArray.charAt(length - 1);
-
-    final boolean asBrackets = firstCharacter == '[' && lastCharacter == ']';
-    if(length == 2 && asBrackets)
-      return true;
-
-    final String inBrackets = maybeJsonArray.substring(1,length - 2);
-    return Stream.of(inBrackets.split(","))
-        .allMatch(inBracket -> inBracket.matches("^(\\[.*\\])|(\\{.*\\})$"));
+  private static String transcodeObject(String insideJson) {
+    return Stream.
+        of(insideJson.split(",")).
+        map(JsonParser::asJsObject).
+        collect(Collectors.joining(","));
   }
 
+  private static String asJsObject(String line) {
+    final String[] keyValue = line.split(":");
+    if (keyValue.length != 2)
+      throw new NotJsonException("line " + line + " is not valid json");
+    else {
+      final String key = keyValue[0];
+      final String value = keyValue[1];
 
-  public static String transcodeJson(String json) throws NotJsonException {
-    throw new UnsupportedOperationException("not yet");
+      return key + ":" + transcodeJson(value);
+    }
   }
-
 }
